@@ -71,8 +71,9 @@ class chat_window():
 
         # add a cancel button
         self.cancel_button = wx.Button(self.frame, id=-1, label="cancel", size=(75, 25))
-        self.frame.Bind(wx.EVT_BUTTON, self.send_button_click , self.cancel_button)
+        self.frame.Bind(wx.EVT_BUTTON, self.cancel_button_click , self.cancel_button)
         self.horiz_sizer.Add(self.cancel_button, proportion=0, flag=wx.ALIGN_TOP | wx.ALL, border=5)
+        wx.CallAfter(self.cancel_button.Disable)
 
         # set size hints and add sizer to frame
         self.vert_sizer.Add(self.text_reply, proportion=1, flag=wx.EXPAND, border=5)
@@ -144,7 +145,8 @@ class chat_window():
         self.send_text_to_assistant()
 
     def cancel_button_click(self, event):
-        self.chat_openai.send_to_assistant
+        print("cancel button clicked")
+        self.chat_openai.cancel_run()
 
     # send button clicked
     def send_button_click(self, event):

@@ -99,6 +99,16 @@ class chat_openai():
         self.assistant = None
         self.assistant_thread = None
 
+    # cancel the active run
+    def cancel_run(self):
+        if (self.assistant_thread is not None):
+            print(self.assistant_thread.id)
+            print(self.run.id)
+            self.client.beta.threads.runs.cancel(
+                thread_id=self.assistant_thread.id,
+                run_id=self.run.id
+            )
+
     # send text to assistant
     def send_to_assistant(self, text):
         # get lock
@@ -165,7 +175,10 @@ class chat_openai():
             reply_messages = self.client.beta.threads.messages.list(self.assistant_thread.id,
                                                                     order="asc",
                                                                     after=input_message.id)
-            if reply_messages is None:
+
+            if (latest_run.status == "cancelled") :
+                return "cancelled successfully"
+            elif reply_messages is None:
                 return "chat: failed to retrieve messages"
 
             # concatenate all messages into a single reply skipping the first which is our question
