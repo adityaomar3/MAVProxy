@@ -120,83 +120,38 @@ class chat_openai():
             # create a run
             self.run = self.client.beta.threads.runs.create(
                 thread_id=self.assistant_thread.id,
-                assistant_id=self.assistant.id
+                assistant_id=self.assistant.id,
+                stream=True
             )
-            if self.run is None:
-                return "chat: failed to create run"
+            for event in self.run:
+                if (event.event == "thread.run.requires_action"):
+                    func_call = self.handle_function_call(event)
+                    if (func_call is True):
+                        print("func_call")
 
-            # wait for run to complete
-            run_done = False
-            while not run_done:
-                # wait for one second
-                time.sleep(0.1)
+                if (event.event == "thread.run.completed"):
+                    print("completed")
 
-                # retrieve the run
-                latest_run = self.client.beta.threads.runs.retrieve(
-                    thread_id=self.assistant_thread.id,
-                    run_id=self.run.id
-                )
-
-                # init failure message
-                failure_message = None
-
-                # check run status
-                if latest_run.status in ["queued", "in_progress", "cancelling"]:
-                    run_done = False
-                elif latest_run.status in ["cancelled", "completed", "expired"]:
-                    run_done = True
-                elif latest_run.status in ["failed"]:
-                    failure_message = latest_run.last_error.message
-                    run_done = True
-                elif latest_run.status in ["requires_action"]:
-                    self.handle_function_call(latest_run)
-                    run_done = False
-                else:
-                    print("chat: unrecognised run status" + latest_run.status)
-                    run_done = True
-
-                # send status to status callback
-                status_message = latest_run.status
-                if failure_message is not None:
-                    status_message = status_message + ": " + failure_message
-                self.send_status(status_message)
-
-            # retrieve messages on the thread
-            reply_messages = self.client.beta.threads.messages.list(self.assistant_thread.id,
-                                                                    order="asc",
-                                                                    after=input_message.id)
-            if reply_messages is None:
-                return "chat: failed to retrieve messages"
-
-            # concatenate all messages into a single reply skipping the first which is our question
-            reply = ""
-            need_newline = False
-            for message in reply_messages.data:
-                reply = reply + message.content[0].text.value
-                if need_newline:
-                    reply = reply + "\n"
-                need_newline = True
-
-            if reply is None or reply == "":
-                return "chat: failed to retrieve latest reply"
-            return reply
+                if (event.event == "thread.message.delta"):
+                    print(event.data.delta.content[0].text.value, end=" ")
+                    # stream_text = event.data.delta.content[0].text.value
 
     # handle function call request from assistant
     # on success this returns the text response that should be sent to the assistant, returns None on failure
-    def handle_function_call(self, run):
+    def handle_function_call(self, event):
 
         # sanity check required action (this should never happen)
-        if run.required_action is None:
-            print("chat::handle_function_call: assistant function call empty")
-            return None
+        # if run.required_action is None:
+        #     print("chat::handle_function_call: assistant function call empty")
+        #     return None
 
         # check format
-        if run.required_action.submit_tool_outputs is None:
-            print("chat::handle_function_call: submit tools outputs empty")
-            return None
+        # if run.required_action.submit_tool_outputs is None:
+        #     print("chat::handle_function_call: submit tools outputs empty")
+        #     return None
 
         tool_outputs = []
-        for tool_call in run.required_action.submit_tool_outputs.tool_calls:
+        for tool_call in event.data.required_action.submit_tool_outputs.tool_calls:
             # init output to None
             output = "invalid function call"
 
@@ -251,13 +206,21 @@ class chat_openai():
 
         # send function replies to assistant
         try:
-            self.client.beta.threads.runs.submit_tool_outputs(
-                thread_id=run.thread_id,
-                run_id=run.id,
-                tool_outputs=tool_outputs)
+            stream_tool = self.client.beta.threads.runs.submit_tool_outputs(
+                thread_id=self.assistant_thread.id,
+                run_id=event.data.id,
+                tool_outputs=tool_outputs,
+                stream=True)
+            for tool_events in stream_tool:
+                if (tool_events.event == "thread.message.delta"):
+                    print(tool_events.data.delta.content[0].text.value, end=" ")
+
         except Exception:
             print("chat: error replying to function call")
             print(tool_outputs)
+            return False
+
+        return True
 
     # get the current date and time in the format, Saturday, June 24, 2023 6:14:14 PM
     def get_current_datetime(self, arguments):
