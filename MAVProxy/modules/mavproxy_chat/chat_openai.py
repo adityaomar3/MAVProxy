@@ -26,12 +26,13 @@ except Exception:
 
 
 class chat_openai():
-    def __init__(self, mpstate, status_cb=None, wait_for_command_ack_fn=None):
+    def __init__(self, mpstate, status_cb=None, reply_cb=None, wait_for_command_ack_fn=None):
         # keep reference to mpstate
         self.mpstate = mpstate
 
         # keep reference to status callback
         self.status_cb = status_cb
+        self.reply_cb = reply_cb
 
         # keep reference to wait_for_command_ack_fn
         self.wait_for_command_ack_fn = wait_for_command_ack_fn
@@ -124,31 +125,30 @@ class chat_openai():
                 stream=True
             )
             for event in self.run:
+
                 if (event.event == "thread.run.requires_action"):
                     func_call = self.handle_function_call(event)
                     if (func_call is True):
-                        print("func_call")
+                        continue
 
                 if (event.event == "thread.run.completed"):
-                    print("completed")
+                    self.send_status("completed")
 
                 if (event.event == "thread.message.delta"):
-                    print(event.data.delta.content[0].text.value, end=" ")
-                    # stream_text = event.data.delta.content[0].text.value
+                    stream_text = event.data.delta.content[0].text.value
+                    self.send_reply_stream(stream_text)
 
     # handle function call request from assistant
     # on success this returns the text response that should be sent to the assistant, returns None on failure
     def handle_function_call(self, event):
 
         # sanity check required action (this should never happen)
-        # if run.required_action is None:
-        #     print("chat::handle_function_call: assistant function call empty")
-        #     return None
+        if (event.event != "thread.run.requires_action"):
+            print("chat::handle_function_call: assistant function call empty")
 
         # check format
-        # if run.required_action.submit_tool_outputs is None:
-        #     print("chat::handle_function_call: submit tools outputs empty")
-        #     return None
+        if event.data.required_action.submit_tool_outputs is None:
+            print("chat::handle_function_call: submit tools outputs empty")
 
         tool_outputs = []
         for tool_call in event.data.required_action.submit_tool_outputs.tool_calls:
@@ -213,7 +213,11 @@ class chat_openai():
                 stream=True)
             for tool_events in stream_tool:
                 if (tool_events.event == "thread.message.delta"):
-                    print(tool_events.data.delta.content[0].text.value, end=" ")
+                    # print(tool_events.data.delta.content[0].text.value, end=" ")
+                    stream_text = tool_events.data.delta.content[0].text.value
+                    self.send_reply_stream(stream_text)
+                    if (event.event == "thread.run.completed"):
+                        self.send_status("completed")
 
         except Exception:
             print("chat: error replying to function call")
@@ -739,6 +743,10 @@ class chat_openai():
     def send_status(self, status):
         if self.status_cb is not None:
             self.status_cb(status)
+
+    def send_reply_stream(self, reply):
+        if self.reply_cb is not None:
+            self.reply_cb(reply)
 
     # returns true if string contains regex characters
     def contains_regex(self, string):
