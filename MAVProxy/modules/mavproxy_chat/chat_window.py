@@ -17,6 +17,9 @@ class chat_window():
         # keep reference to mpstate
         self.mpstate = mpstate
 
+        # keep the recording state
+        self.isRecording = False
+
         # create chat_openai object
         self.chat_openai = chat_openai.chat_openai(self.mpstate, self.set_status_text, self.append_chat_replies,
                                                    wait_for_command_ack_fn)
@@ -123,7 +126,7 @@ class chat_window():
 
     # record button clicked
     def record_button_click(self, event):
-        # run record_button_click_execute in a new thread
+        print("record button clicked")
         th = Thread(target=self.record_button_click_execute, args=(event,))
         th.start()
 
@@ -131,7 +134,7 @@ class chat_window():
     def record_button_click_execute(self, event):
         # record audio
         self.set_status_text("recording audio")
-        rec_filename = self.chat_voice_to_text.record_audio()
+        rec_filename = self.chat_voice_to_text.record_audio(False)
         if rec_filename is None:
             self.set_status_text("audio recording failed")
             return
@@ -152,6 +155,7 @@ class chat_window():
     def record_button_pushed(self, event):
         # run record_button_click_execute in a new thread
         self.set_status_text("recording button pressed")
+        self.record_button_click(event)
 
     # record button released
     def record_button_released(self, event):
