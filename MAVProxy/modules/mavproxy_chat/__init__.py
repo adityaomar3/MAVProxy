@@ -63,6 +63,7 @@ class chat(mp_module.MPModule):
 
     # show chat input window
     def show(self):
+        print("entered show")
         self.chat_window.show()
 
     # handle mavlink packet

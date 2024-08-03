@@ -22,6 +22,7 @@ class chat_voice_to_text():
         self.client = None
         self.assistant = None
         self.stop_recording = False
+        self.rec_status = None
 
     # set the OpenAI API key
     def set_api_key(self, api_key_str):
@@ -43,7 +44,7 @@ class chat_voice_to_text():
 
     # record audio from microphone
     # returns filename of recording or None if failed
-    def record_audio(self):
+    def record_audio(self, rec_status):
         # Initialize PyAudio
         p = pyaudio.PyAudio()
 
@@ -57,11 +58,14 @@ class chat_voice_to_text():
         # calculate time recording should stop
         curr_time = time.time()
         time_stop = curr_time + 5
-        self.stop_recording = False
+        self.stop_recording = rec_status
 
         # record until specified time
         frames = []
         while curr_time < time_stop and not self.stop_recording:
+            if (self.rec_status is True):
+                self.stop_recording = True
+
             data = stream.read(1024)
             frames.append(data)
             curr_time = time.time()
