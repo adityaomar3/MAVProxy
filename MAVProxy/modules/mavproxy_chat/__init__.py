@@ -36,6 +36,8 @@ class chat(mp_module.MPModule):
         # we assume we will never be waiting for two of the same mavcmds at the same time
         self.command_ack_waiting = {}
 
+        self.chat_window = None
+
         # run chat window in a separate thread
         self.thread = Thread(target=self.create_chat_window)
         self.thread.start()
@@ -63,6 +65,7 @@ class chat(mp_module.MPModule):
 
     # show chat input window
     def show(self):
+        print("show")
         self.chat_window.show()
 
     # handle mavlink packet
@@ -112,6 +115,10 @@ class chat(mp_module.MPModule):
         # return False indicating timeout
         del self.command_ack_waiting[mav_cmd]
         return False
+
+    def unload(self):
+        print("unload")
+        self.chat_window.close()
 
 
 # initialise module
