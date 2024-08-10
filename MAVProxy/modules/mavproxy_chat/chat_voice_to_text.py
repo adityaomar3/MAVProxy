@@ -15,14 +15,15 @@ except Exception:
     print("chat: failed to import pyaudio, wave or openai.  See https://ardupilot.org/mavproxy/docs/modules/chat.html")
     exit()
 
+# initializing the global list to keep and update the stop_recording state
+stop_recording = [False]
+
 
 class chat_voice_to_text():
     def __init__(self):
         # initialise variables
         self.client = None
         self.assistant = None
-        self.stop_recording = False
-        self.rec_status = None
 
     # set the OpenAI API key
     def set_api_key(self, api_key_str):
@@ -44,7 +45,7 @@ class chat_voice_to_text():
 
     # record audio from microphone
     # returns filename of recording or None if failed
-    def record_audio(self, rec_status):
+    def record_audio(self):
         # Initialize PyAudio
         p = pyaudio.PyAudio()
 
@@ -58,14 +59,13 @@ class chat_voice_to_text():
         # calculate time recording should stop
         curr_time = time.time()
         time_stop = curr_time + 5
-        self.stop_recording = rec_status
+        # stop_recording = not rec_status
 
         # record until specified time
         frames = []
-        while curr_time < time_stop and not self.stop_recording:
-            if (self.rec_status is True):
-                self.stop_recording = True
-
+        # while curr_time < time_stop and not self.stop_recording:
+        while curr_time < time_stop and not stop_recording[0]:
+            print(stop_recording)
             data = stream.read(1024)
             frames.append(data)
             curr_time = time.time()
@@ -74,7 +74,8 @@ class chat_voice_to_text():
         stream.stop_stream()
         stream.close()
         p.terminate()
-
+        print(stop_recording[0])
+        stop_recording[0] = False
         # Save audio file
         wf = wave.open("recording.wav", "wb")
         wf.setnchannels(1)
@@ -83,10 +84,6 @@ class chat_voice_to_text():
         wf.writeframes(b''.join(frames))
         wf.close()
         return "recording.wav"
-
-    # stop recording audio
-    def stop_record_audio(self):
-        self.stop_recording = True
 
     # convert audio to text
     # returns transcribed text on success or None if failed

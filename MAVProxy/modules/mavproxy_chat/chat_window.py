@@ -134,7 +134,7 @@ class chat_window():
     def record_button_click_execute(self, event):
         # record audio
         self.set_status_text("recording audio")
-        rec_filename = self.chat_voice_to_text.record_audio(False)
+        rec_filename = self.chat_voice_to_text.record_audio()
         if rec_filename is None:
             self.set_status_text("audio recording failed")
             return
@@ -161,6 +161,7 @@ class chat_window():
     def record_button_released(self, event):
         # run record_button_click_execute in a new thread
         self.set_status_text("recording button released")
+        chat_voice_to_text.stop_recording[0] = True
 
     # cancel button clicked
     def cancel_button_click(self, event):
