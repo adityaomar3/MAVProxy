@@ -159,8 +159,9 @@ class chat_window():
 
     # record button released
     def record_button_released(self, event):
-        # run record_button_click_execute in a new thread
+        # Run when mous click is released
         self.set_status_text("recording button released")
+        # set the stop_recording status to True
         chat_voice_to_text.stop_recording[0] = True
 
     # cancel button clicked
